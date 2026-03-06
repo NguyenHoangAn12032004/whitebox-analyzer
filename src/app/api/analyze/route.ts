@@ -12,13 +12,21 @@ TUYỆT ĐỐI KHÔNG ĐƯỢC SỬ DỤNG markdown block (\`\`\`mermaid hay \`\
 [BLOCK_MERMAID]
 graph TD
 (Ghi thẳng mã nguồn Mermaid dưới label này. Tuyệt đối không dùng ký tự \`\`\`mermaid.
-QUAN TRỌNG VỀ LOGIC & HÌNH KHỐI (Theo chuẩn sơ đồ khối giáo trình):
-1. BẮT BUỘC TÁCH RIÊNG NÚT BẮT ĐẦU VÀ KẾT THÚC. Sử dụng hình oval tròn hai đầu bằng cú pháp ngoặc đơn. Ví dụ: nodeStart([Start]) và nodeEnd([End]). KHÔNG gộp Start vào chung với các khai báo biến.
-2. ÉP KIỂU GỘP KHỐI XỬ LÝ VÀO ĐIỀU KIỆN (Giảm node): Gộp các khai báo biến và lệnh gán lên trên điều kiện nhánh rẽ gần nhất thành CHUNG 1 khối hình thoi ngoặc nhọn.
-3. HIỂN THỊ GỌN GÀNG GIAO DIỆN (Tránh hiển thị code dài trên hình):
-- Ở phần định nghĩa vẽ hình (graph TD), BẠN CHỈ ĐƯỢC PHÉP IN RA CÁC CHỮ SỐ HOẶC Định danh Nút (Ví dụ: N1{"1"}, hoặc N2{"2"}). CẤM TUYỆT ĐỐI KHÔNG IN BẤT CỨ ĐOẠN MÃ NÀO HOẶC CÔNG THỨC DÀI vào trong ngoặc vẽ hình. Chỉ để chừa lại 1 chữ số nhỏ, việc giải nghĩa đoạn code sẽ được thực hiện bằng Tooltips ở BLOCK_TOOLTIPS_JSON.
-- KHÔNG sử dụng cú pháp \`click\` của Mermaid nữa. Xin nhắc lại, KHÔNG DÙNG TỪ KHÓA CLICK.
-4. MÀU SẮC DỄ NHÌN: Bạn có thể thêm màu trực tiếp bằng lệnh \`style\` đơn giản. Ví dụ: \`style nodeStart fill:#f9f,stroke:#333\` và \`style N1 fill:#bbf,stroke:#f66\`
+QUAN TRỌNG VỀ MÃ MERMAID (Cú pháp siêu đơn giản để tránh lỗi):
+1. Đặt ID cho nút Bắt đầu là "Start", nút Kết thúc là "End". Các khối code dùng chữ số (Ví dụ: 1, 2, 3).
+2. TẠO CÁC LIÊN KẾT TRỰC TIẾP MÀ KHÔNG ĐỊNH NGHĨA HÌNH DÁNG NÚT.
+3. TUYỆT ĐỐI KHÔNG DÙNG BẤT KỲ DẤU NGOẶC NÀO (KHÔNG [], KHÔNG (), KHÔNG {}).
+4. KHÔNG VIẾT CODE HAY BIỂU THỨC VÀO MERMAID. CHỈ DÙNG SỐ ĐỂ LIÊN KẾT NHƯ VÍ DỤ DƯỚI ĐÂY:
+
+Ví dụ ĐÚNG VÀ BẮT BUỘC:
+Start --> 1
+1 --> 2
+2 -- True --> 3
+2 -- False --> 4
+3 --> End
+4 --> End
+
+Chỉ được cung cấp nội dung code trong khối [BLOCK_TOOLTIPS_JSON] bằng ID tương ứng, tuyệt đối không xuất hiện trong Markdown.
 )
 
 [BLOCK_TOOLTIPS_JSON]
@@ -26,16 +34,16 @@ QUAN TRỌNG VỀ LOGIC & HÌNH KHỐI (Theo chuẩn sơ đồ khối giáo trì
   "nodeStart": "Bắt đầu thuật toán",
   "N1": "int soLanSaiPin = 0;\\nbool isLocked = false;"
 }
-(BẮT BUỘC TRẢ VỀ khối này chứa 1 Object JSON. Các key là ID của Node trong biểu đồ Mermaid ở trên. Value là toàn bộ mã nguồn gốc/công thức đầy đủ tương ứng với Node đó. CẤU TRÚC PHẢI CHUẨN JSON, các ký tự xuống dòng dùng \\n).
+(BẮT BUỘC TRẢ VỀ khối này chứa 1 Object JSON. Các key là ID của Node trong biểu đồ Mermaid ở trên. Value là toàn bộ mã nguồn gốc tương ứng với Node đó. CẤU TRÚC PHẢI CHUẨN JSON).
 
 [BLOCK_COMPLEXITY]
-(Trả về các công thức tính và kết quả của độ phức tạp Cyclomatic V(G) dựa trên đồ thị trên).
+(Trả về các công thức tính và kết quả của độ phức tạp Cyclomatic V(G)).
 
 [BLOCK_TESTCASES_JSON]
 [
   {"id": "TC1", "description": "...", "path": "...", "inputs": {}, "expected_outputs": {}}
 ]
-(Trả về cấu trúc mảng JSON trên bắt đầu bằng [, kết thúc bằng ], tuyệt đối không sử dụng block \`\`\`)
+(Trả về mảng JSON testcases. TUYỆT ĐỐI KHÔNG SỬ DỤNG BLOCK \`\`\`).
 `;
 
 export async function POST(req: NextRequest) {
@@ -59,13 +67,13 @@ export async function POST(req: NextRequest) {
         for (const modelName of modelsToTry) {
             try {
                 const model = genAI.getGenerativeModel({ model: modelName });
-                const prompt = `${SYSTEM_PROMPT}\n\nĐầu vào (Mã nguồn):\n${code}`;
+                const prompt = `${SYSTEM_PROMPT} \n\nĐầu vào(Mã nguồn): \n${code} `;
                 const result = await model.generateContent(prompt);
                 text = result.response.text();
-                console.log(`Successfully used model: ${modelName}`);
+                console.log(`Successfully used model: ${modelName} `);
                 break; // Success!
             } catch (err: any) {
-                console.warn(`Model ${modelName} failed:`, err.message);
+                console.warn(`Model ${modelName} failed: `, err.message);
                 lastError = err;
             }
         }
@@ -93,6 +101,10 @@ export async function POST(req: NextRequest) {
         } else if (mermaid.includes('```')) {
             mermaid = mermaid.replace(/```/g, '').trim();
         }
+
+        // Advanced Mermaid syntax sanitization to prevent "Lexical Error"
+        // Remove quotes, single quotes, and backslashes which often break Mermaid parsers
+        mermaid = mermaid.replace(/["']/g, '').replace(/\\/g, '');
 
         // Clean up json code block wraps if ai provided them
         if (testcasesText.includes('```json')) {
